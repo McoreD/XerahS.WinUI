@@ -8,7 +8,7 @@
 
     <Grid x:Name="RootGrid" Background="Transparent" DoubleTapped="OnDoubleTapped">
         <!-- Freeze screen background -->
-        <Image x:Name="BackgroundImage" Stretch="None" />
+        <Image x:Name="BackgroundImage" Stretch="Fill" />
 
         <!-- Dim overlay covering entire virtual desktop -->
         <Rectangle x:Name="DimOverlay" Fill="Black" Opacity="0.5" />

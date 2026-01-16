@@ -99,18 +99,9 @@ public sealed partial class RegionCaptureOverlay : Window
         // Get AppWindow for advanced configuration
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         var appWindow = AppWindow.GetFromWindowId(windowId);
+        
+        Log($"ConfigureOverlayWindow: AppWindow obtained. Presenter: {appWindow.Presenter?.GetType().Name}");
 
-        // Position and size to cover entire virtual desktop
-        var vdBounds = _virtualDesktop.VirtualBounds;
-
-        // Move and resize window to cover virtual desktop
-        appWindow.MoveAndResize(new RectInt32(
-            vdBounds.Left,
-            vdBounds.Top,
-            vdBounds.Width,
-            vdBounds.Height));
-
-        // Configure as borderless, topmost overlay
         if (appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = false;
@@ -118,7 +109,23 @@ public sealed partial class RegionCaptureOverlay : Window
             presenter.IsMinimizable = false;
             presenter.IsAlwaysOnTop = true;
             presenter.SetBorderAndTitleBar(false, false);
+            Log("ConfigureOverlayWindow: SetBorderAndTitleBar(false, false) called");
         }
+
+        // Force ExtendsContentIntoTitleBar as fallback for removing caption
+        this.ExtendsContentIntoTitleBar = true;
+
+        // Position and size to cover entire virtual desktop
+        var vdBounds = _virtualDesktop.VirtualBounds;
+        
+        Log($"ConfigureOverlayWindow: Moving to {vdBounds.Left},{vdBounds.Top} {vdBounds.Width}x{vdBounds.Height}");
+
+        // Move and resize window to cover virtual desktop
+        appWindow.MoveAndResize(new RectInt32(
+            vdBounds.Left,
+            vdBounds.Top,
+            vdBounds.Width,
+            vdBounds.Height));
 
         // Set DPI awareness
         Win32.SetProcessDpiAwareness(Win32.PROCESS_DPI_AWARENESS.PROCESS_PER_MONITOR_DPI_AWARE);
@@ -154,7 +161,9 @@ public sealed partial class RegionCaptureOverlay : Window
     {
         try
         {
-            File.AppendAllText(_logFile, $"{DateTime.Now:HH:mm:ss.fff}: {message}{Environment.NewLine}");
+            var msg = $"{DateTime.Now:HH:mm:ss.fff}: {message}";
+            File.AppendAllText(_logFile, msg + Environment.NewLine);
+            Console.WriteLine(msg); // Output to console for dotnet run capture
         }
         catch { }
     }
