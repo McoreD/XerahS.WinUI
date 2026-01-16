@@ -6,7 +6,10 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid x:Name="RootGrid" Background="Transparent">
+    <Grid x:Name="RootGrid" Background="Transparent" DoubleTapped="OnDoubleTapped">
+        <!-- Freeze screen background -->
+        <Image x:Name="BackgroundImage" Stretch="None" />
+
         <!-- Dim overlay covering entire virtual desktop -->
         <Rectangle x:Name="DimOverlay" Fill="Black" Opacity="0.5" />
 

@@ -15,6 +15,8 @@ using XerahS.RegionCapture.Core.Coordinates;
 using XerahS.RegionCapture.Input;
 using XerahS.RegionCapture.NativeMethods;
 
+using System.IO;
+
 namespace XerahS.RegionCapture.UI;
 
 public sealed partial class RegionCaptureOverlay : Window
@@ -30,6 +32,7 @@ public sealed partial class RegionCaptureOverlay : Window
     private IntPtr _hwnd;
     private Timer? _windowDetectionTimer;
     private (int x, int y) _lastCursorPosition;
+    private readonly string _logFile;
 
     public RegionCaptureOverlay(RegionCaptureOptions options)
     {
@@ -38,6 +41,9 @@ public sealed partial class RegionCaptureOverlay : Window
 
         _completionSource = new TaskCompletionSource<RegionCaptureResult?>();
         _captureStartTime = DateTimeOffset.Now;
+
+        _logFile = Path.Combine(Path.GetTempPath(), "RegionCapture_Debug.log");
+        Log($"Constructor called. Log file: {_logFile}");
 
         // Initialize core systems
         _virtualDesktop = VirtualDesktop.Enumerate();
@@ -68,10 +74,15 @@ public sealed partial class RegionCaptureOverlay : Window
     /// <summary>
     /// Shows the overlay and waits for capture completion.
     /// </summary>
-    public Task<RegionCaptureResult?> ShowAsync()
+    public async Task<RegionCaptureResult?> ShowAsync()
     {
+        Log("ShowAsync called");
+        // Freeze screen before showing
+        await CaptureAndSetBackgroundAsync();
+
         this.Activate();
-        return _completionSource.Task;
+        Log("Window activated");
+        return await _completionSource.Task;
     }
 
     /// <summary>
@@ -111,6 +122,41 @@ public sealed partial class RegionCaptureOverlay : Window
 
         // Set DPI awareness
         Win32.SetProcessDpiAwareness(Win32.PROCESS_DPI_AWARENESS.PROCESS_PER_MONITOR_DPI_AWARE);
+    }
+
+    private async Task CaptureAndSetBackgroundAsync()
+    {
+        try
+        {
+            Log("CaptureAndSetBackgroundAsync started");
+            // Capture the entire virtual desktop
+            var bounds = _virtualDesktop.VirtualBounds;
+            Log($"Capturing region: {bounds.Left},{bounds.Top} {bounds.Width}x{bounds.Height}");
+
+            var softwareBitmap = await ScreenCaptureEngine.CaptureRegionAsync(bounds);
+            Log($"Capture engine returned bitmap: {softwareBitmap.PixelWidth}x{softwareBitmap.PixelHeight}");
+
+            // Convert to SoftwareBitmapSource
+            var source = new Microsoft.UI.Xaml.Media.Imaging.SoftwareBitmapSource();
+            await source.SetBitmapAsync(softwareBitmap);
+
+            BackgroundImage.Source = source;
+            Log("BackgroundImage source set successfully");
+        }
+        catch (Exception ex)
+        {
+            Log($"Failed to capture background: {ex}");
+            System.Diagnostics.Debug.WriteLine($"Failed to capture background: {ex}");
+        }
+    }
+
+    private void Log(string message)
+    {
+        try
+        {
+            File.AppendAllText(_logFile, $"{DateTime.Now:HH:mm:ss.fff}: {message}{Environment.NewLine}");
+        }
+        catch { }
     }
 
     private void ApplyOptions()
@@ -170,6 +216,12 @@ public sealed partial class RegionCaptureOverlay : Window
             var (physX, physY) = _coordinateMapper.OverlayDipToPhysical(this, point.Position.X, point.Position.Y);
             _stateMachine.OnPointerPressed(physX, physY);
         }
+    }
+
+    private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        Log("OnDoubleTapped fired");
+        _stateMachine.Confirm();
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
