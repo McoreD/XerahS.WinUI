@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.Graphics;
 using Windows.Graphics.Imaging;
+using WinRT;
 using XerahS.RegionCapture.NativeMethods;
 
 namespace XerahS.RegionCapture.Core.Capture;
@@ -111,7 +112,7 @@ internal sealed class ScreenCaptureEngine
             {
                 byte* dataInBytes;
                 uint capacity;
-                ((IMemoryBufferByteAccess)reference).GetBuffer(out dataInBytes, out capacity);
+                reference.As<IMemoryBufferByteAccess>().GetBuffer(out dataInBytes, out capacity);
 
                 // Copy pixel data
                 // GDI bitmap is in BGR format (32-bit), we need BGRA8
